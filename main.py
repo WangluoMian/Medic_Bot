@@ -2,20 +2,20 @@ import discord
 import logging
 import random
 import asyncio
+
 ################################################################################
 logging.basicConfig(level=logging.INFO)
 client = discord.Client()
 ################################################################################
+
 songTime = 0
 songDonePlaying = True
 
 async def my_background_task():
     await client.wait_until_ready()
-    #channel = discord.Object(id='342082813790781440')
     while not client.is_closed:
         global songTime
         songTime -= 1
-        #await client.send_message(channel, songTime)
         await asyncio.sleep(1) # task runs every 60 seconds
         if songTime == 0:
             return
@@ -33,11 +33,11 @@ async def on_message(message):
     huglist = ["hug1.gif","hug2.gif","hug3.gif","hug4.gif"]
     bdaylist = ["bday1.gif","bday2.gif","bday3.gif"]
 
-    # we do not want the bot to reply to itself
+    #We do not want the bot to reply to itself
     if message.author == client.user:
         return
 
-#anyone can use these commands
+	#A list of commands for people to use
     if message.content.startswith('!meme'):
         media_to_use = random.choice(memlist)
         await client.send_file(message.channel, media_to_use)
@@ -53,7 +53,7 @@ async def on_message(message):
         media_to_use = random.choice(bdaylist)
         await client.send_file(message.channel, media_to_use)
 
-#music player for links with youtube
+	#Music player for links with youtube
     elif message.content.startswith('!play '):
         global songTime
         global songDonePlaying
@@ -69,7 +69,7 @@ async def on_message(message):
             timeLeft = str(convert_seconds_to_minutes(songTime))
             await client.send_message(message.channel, "Sorry the song currently playing has " + timeLeft +" minutes left, please try again when it's ended. Thank you.")
 
-#panic mode
+	#Panic mode
     elif message.content.startswith('!panic'):
         msg1 = 'Hello {0.author.mention}, I see you\'re\' having a panic attack. Please move to our support channel ' \
                                    'where we can better assist you.'.format(message)
@@ -79,7 +79,7 @@ async def on_message(message):
         await client.send_message(discord.Object(id='342161554260754432'), msg2)
         await client.send_file(discord.Object(id='342161554260754432'), "breathing.gif")
 
-#help section for people to use commands
+	#Help section explaining how to use the commands
     elif message.content.startswith('!help'):
         em = discord.Embed(title='*beep...* *boop...*Hello, you\'ve\' asked for help!', description='Here are a list of some command you can do: ' \
               +'\n' +'\n' '!meme - sends a random meme'\
@@ -91,7 +91,7 @@ async def on_message(message):
         em.set_author(name='Someone', icon_url=client.user.default_avatar_url)
         await client.send_message(message.channel, embed=em)
 
-#Admin commands
+	#Admin commands
     elif message.content.startswith('!purge'):
         if str(message.author.top_role) == "admin" or str(message.author.top_role) == "staff":
             deleted = await client.purge_from(message.channel, limit=100)
@@ -101,6 +101,7 @@ async def on_message(message):
             await client.send_message(message.channel, "*beep... boop...*Sorry you don't contain the "
                                                        "right privileges to execute that command.")
 
+	#Message to welcome member when they join the server
 @client.event
 async def on_member_join(member):
     server = member.server
@@ -109,6 +110,7 @@ async def on_member_join(member):
                   ' you\'ll feel at home here :D'
     await client.send_message(server, fmt.format(member, server))
 
+	#Message to say goodbye to the member that left the server
 @client.event
 async def on_member_remove(member):
     server = member.server
