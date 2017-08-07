@@ -29,7 +29,7 @@ def convert_seconds_to_minutes(seconds):
 @client.event
 async def on_message(message):
     #list of media
-    memlist = ["mem1.jpg","mem2.jpg","mem3.jpg","mem4.jpg","mem5.jpg","mem6.jpg","mem7.jpg","mem8.jpg","mem9.jpg","mem10.jpg"]
+    memlist = ["mem1.jpg","mem2.jpg","mem3.jpg","mem4.jpg","mem5.jpg","mem6.jpg","mem7.jpg","mem8.jpg","mem9.jpg","mem10.jpg","mem11.jpg","mem12.jpg","mem13.jpg","mem14.jpg"]
     huglist = ["hug1.gif","hug2.gif","hug3.gif","hug4.gif"]
     bdaylist = ["bday1.gif","bday2.gif","bday3.gif"]
 
@@ -59,7 +59,8 @@ async def on_message(message):
         global songDonePlaying
         if songTime == 0:
             msg = message.content.replace("!play ", "")
-            voice = client.voice_client_in(discord.Server(id='344147579593949194'))
+            voice = client.voice_client_in(discord.Server(id='219209303708401664'))
+            print(voice)
             player = await voice.create_ytdl_player(msg)
             player.start()
             client.loop.create_task(my_background_task())
