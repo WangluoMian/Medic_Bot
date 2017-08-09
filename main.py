@@ -6,10 +6,13 @@ import asyncio
 ################################################################################
 logging.basicConfig(level=logging.INFO)
 client = discord.Client()
-################################################################################
-
 songTime = 0
 songDonePlaying = True
+server_id = '219209303708401664'
+channel_id = '272465465702350848'
+voice_id = '344147579593949194'
+staff_role_id ="<@&339089528885084170>"
+################################################################################
 
 async def my_background_task():
     await client.wait_until_ready()
@@ -59,7 +62,7 @@ async def on_message(message):
         global songDonePlaying
         if songTime == 0:
             msg = message.content.replace("!play ", "")
-            voice = client.voice_client_in(discord.Server(id='219209303708401664'))
+            voice = client.voice_client_in(discord.Server(id=server_id))
             print(voice)
             player = await voice.create_ytdl_player(msg)
             player.start()
@@ -77,8 +80,8 @@ async def on_message(message):
         msg2= 'Hello @everyone, is anyone available to assist {0.author.mention}. Here is a gif to help you breath in the ' \
                                                                            'mean time.'.format(message)
         await client.send_message(message.channel, msg1)
-        await client.send_message(discord.Object(id='272465465702350848'), msg2)
-        await client.send_file(discord.Object(id='272465465702350848'), "breathing.gif")
+        await client.send_message(discord.Object(id=channel_id), msg2)
+        await client.send_file(discord.Object(id=channel_id), "breathing.gif")
 
 	#Help section explaining how to use the commands
     elif message.content.startswith('!help'):
@@ -86,10 +89,11 @@ async def on_message(message):
               +'\n' +'\n' '!meme - sends a random meme'\
               +'\n' +'\n' '!hug - sends a random hug gif' \
               +'\n' +'\n' '!breathe - sends a breathing exercise gif' \
-              +'\n' +'\n' '!play - e.i(!play {insert YouTube link here}) will play that youtube link in the general'
-                     'voice channel' \
+              +'\n' +'\n' '!play - e.i(!play {insert YouTube link here}) will play that youtube link in the music'
+                     ' voice channel' \
               +'\n' +'\n' '!panic - is for people who are having an anxiety attack'\
-			  +'\n' +'\n' '!happybday - sends a random birthday gif', colour=0x00E707)
+			  +'\n' +'\n' '!happybday - sends a random birthday gif' \
+              +'\n' +'\n' '~This is a bot made by @Philzeey, feel free to send me any messages for complaints or suggestions.', colour=0x00E707)
         em.set_author(name=message.author, icon_url=client.user.avatar_url)
         await client.send_message(message.channel, embed=em)
 
@@ -108,8 +112,8 @@ async def on_message(message):
 async def on_member_join(member):
     server = member.server
     fmt = 'Welcome {0.mention} to {1.name}! Don\'t hesitate to use any of the ' \
-                  '#support channels if you require immediate support  or contact @Staff if you have any questions. We\'re sure' \
-                  ' you\'ll feel at home here :D'
+                  '#support channels if you require immediate support or contact ' + staff_role_id + ' if you have any questions. We\'re sure' \
+                  ' you\'ll feel at home here. Type !help for any bot commands.'
     await client.send_message(server, fmt.format(member, server))
 
 ################################################################################
@@ -122,7 +126,7 @@ async def on_ready():
     print(client.user.id)
     print('------')
     await client.change_presence(game=discord.Game(name='Helping People'))
-    await client.join_voice_channel(discord.Object(id='344147579593949194'))
+    await client.join_voice_channel(discord.Object(id=voice_id))
 ################################################################################
 
 client.run('')
