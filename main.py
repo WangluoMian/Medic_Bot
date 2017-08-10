@@ -2,6 +2,8 @@ import discord
 import logging
 import random
 import asyncio
+import requests
+from bs4 import BeautifulSoup
 
 ################################################################################
 logging.basicConfig(level=logging.INFO)
@@ -86,14 +88,15 @@ async def on_message(message):
 	#Help section explaining how to use the commands
     elif message.content.startswith('!help'):
         em = discord.Embed(title='*beep...* *boop...*Hello, you\'ve\' asked for help!', description='Here are a list of some command you can do: ' \
-              +'\n' +'\n' '!meme - sends a random meme'\
-              +'\n' +'\n' '!hug - sends a random hug gif' \
-              +'\n' +'\n' '!breathe - sends a breathing exercise gif' \
-              +'\n' +'\n' '!play - e.i(!play {insert YouTube link here}) will play that youtube link in the music'
+                '\n''\n' '!meme - sends a random meme'\
+                '\n''\n' '!hug - sends a random hug gif' \
+                '\n''\n' '!breathe - sends a breathing exercise gif' \
+                '\n''\n' '!play - e.i(!play {insert YouTube link here}) will play that youtube link in the music'
                      ' voice channel' \
-              +'\n' +'\n' '!panic - is for people who are having an anxiety attack'\
-			  +'\n' +'\n' '!happybday - sends a random birthday gif' \
-              +'\n' +'\n' '~This is a bot made by @Philzeey, feel free to send me any messages for complaints or suggestions.', colour=0x00E707)
+                '\n''\n' '!panic - is for people who are having an anxiety attack'\
+                '\n''\n' '!happybday - sends a random birthday gif' \
+                '\n''\n' '!urbanD - e.i(!urbanD anxiety) will return the top definition for that word'
+                '\n''\n' '~This is a bot made by @Philzeey, feel free to send me any messages for complaints or suggestions.', colour=0x00E707)
         em.set_author(name=message.author, icon_url=client.user.avatar_url)
         await client.send_message(message.channel, embed=em)
 
@@ -106,6 +109,14 @@ async def on_message(message):
         else:
             await client.send_message(message.channel, "*beep... boop...*Sorry you don't contain the "
                                                        "right privileges to execute that command.")
+
+    # UrbanDictionary finder
+    elif message.content.startswith('!urbanD '):
+        msg = message.content.replace('!urbanD ', '')
+        r = requests.get("http://www.urbandictionary.com/define.php?term={}".format(msg))
+        soup = BeautifulSoup(r.content, "html.parser")
+        definition = soup.find("div", attrs={"class": "meaning"}).text
+        await client.send_message(message.channel, "From Urban Dictionary, " + "**" + msg + "**" + " is defined as:"'\n''\n' + "*" + definition + "*")
 
 	#Message to welcome member when they join the server
 @client.event
