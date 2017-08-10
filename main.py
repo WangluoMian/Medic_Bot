@@ -13,7 +13,8 @@ songDonePlaying = True
 server_id = '219209303708401664'
 channel_id = '272465465702350848'
 voice_id = '344147579593949194'
-staff_role_id ="<@&339089528885084170>"
+staff_role_id = "<@&339089528885084170>"
+welcome_channel_id = "<#338456569769623552>"
 ################################################################################
 
 async def my_background_task():
@@ -123,8 +124,8 @@ async def on_message(message):
 async def on_member_join(member):
     server = member.server
     fmt = 'Welcome {0.mention} to {1.name}! Don\'t hesitate to use any of the ' \
-                  '#support channels if you require immediate support or contact ' + staff_role_id + ' if you have any questions. We\'re sure' \
-                  ' you\'ll feel at home here. Type !help for any bot commands.'
+                  '#support channels if you require immediate support or contact ' + staff_role_id + ' if you have any questions. Please read our ' + welcome_channel_id + \
+                  ' channel so you can be familiar with our server rules. Type !help for any bot commands.'
     await client.send_message(server, fmt.format(member, server))
 
 ################################################################################
