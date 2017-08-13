@@ -5,19 +5,21 @@ import asyncio
 import requests
 import sys, os
 from bs4 import BeautifulSoup
-
 ################################################################################
 script_dir = sys.path[0]
 img_path = os.path.join(script_dir, 'media\\')
+song_path = os.path.join(script_dir, 'music\\')
 logging.basicConfig(level=logging.INFO)
 client = discord.Client()
-songTime = 0
-songDonePlaying = True
 server_id = '219209303708401664'
 panic_channel_id = '272465465702350848'
 voice_id = '344147579593949194'
 staff_role_id = "<@&339089528885084170>"
+HAS_role_id = "<@&338694785848311808>"
 welcome_channel_id = "<#338456569769623552>"
+################################################################################
+#global variables
+songTime = 0
 ################################################################################
 
 async def my_background_task():
@@ -25,7 +27,7 @@ async def my_background_task():
     while not client.is_closed:
         global songTime
         songTime -= 1
-        await asyncio.sleep(1) # task runs every 60 seconds
+        await asyncio.sleep(1)
         if songTime == 0:
             return
 
@@ -34,13 +36,18 @@ def convert_seconds_to_minutes(seconds):
     h, m = divmod(m, 60)
     return "%d:%02d:%02d" % (h, m, s)
 
-
 @client.event
 async def on_message(message):
     #list of media
     memlist = ["mem1.jpg","mem2.jpg","mem3.jpg","mem4.jpg","mem5.jpg","mem6.jpg","mem7.jpg","mem8.jpg","mem9.jpg","mem10.jpg","mem11.jpg","mem12.jpg","mem13.jpg","mem14.jpg"]
     huglist = ["hug1.gif","hug2.gif","hug3.gif","hug4.gif"]
     bdaylist = ["bday1.gif","bday2.gif","bday3.gif"]
+
+    #list of music
+    rainlist = ["rain1.mp3"]
+    medlist = ["med1.mp3"]
+    waveslist = ["waves1.mp3"]
+    streamlist = ["stream1.mp3"]
 
     #We do not want the bot to reply to itself
     if message.author == client.user:
@@ -65,26 +72,49 @@ async def on_message(message):
 	#Music player for links with youtube
     #elif message.content.startswith('!play '):
         #global songTime
-        #global songDonePlaying
         #if songTime == 0:
             #msg = message.content.replace("!play ", "")
             #voice = client.voice_client_in(discord.Server(id=server_id))
-            #print(voice)
             #player = await voice.create_ytdl_player(msg)
             #player.start()
             #client.loop.create_task(my_background_task())
             #songTime = player.duration
-            #songDonePlaying = False
         #else:
             #timeLeft = str(convert_seconds_to_minutes(songTime))
             #await client.send_message(message.channel, "Sorry the song currently playing has " + timeLeft +" minutes left, please try again when it's ended. Thank you.")
 
+    #Music player for custom music files
+    elif message.content.startswith('!play '):
+        global songTime
+        if songTime == 0:
+            msg = message.content.replace("!play ", "")
+            voice = client.voice_client_in(discord.Server(id=server_id))
+            if msg == 'rain':
+                song_to_use = random.choice(rainlist)
+            elif msg == 'med':
+                song_to_use = random.choice(medlist)
+            elif msg == 'stream':
+                song_to_use = random.choice(streamlist)
+            elif msg == 'waves':
+                song_to_use = random.choice(waveslist)
+            else:
+                await client.send_message(message.channel, 'Sorry, you\'ve chosen an invalid choice. Valid choices include: stream, waves, med, rain.')
+                return
+            player = voice.create_ffmpeg_player(song_path + song_to_use)
+            player.start()
+            songTime = 605
+            client.loop.create_task(my_background_task())
+        else:
+            timeLeft = str(convert_seconds_to_minutes(songTime))
+            await client.send_message(message.channel, "Sorry the song currently playing has " + timeLeft +" minutes left, please try again when it's ended.")
+            return
+
 	#Panic mode
     elif message.content.startswith('!panic'):
         msg1 = 'Hello {0.author.mention}, I see you\'re having a panic attack. Please move to our support channel ' \
-                                   'where we can better assist you.'.format(message)
-        msg2= 'Hello @everyone, is anyone available to assist {0.author.mention}. Here is a gif to help you breath in the ' \
-                                                                           'mean time.'.format(message)
+               'where we can better assist you.'.format(message)
+        msg2 = 'Hello @everyone, is anyone available to assist {0.author.mention}. Here is a gif to help you breath in the ' \
+               'mean time.'.format(message)
         await client.send_message(message.channel, msg1)
         await client.send_message(discord.Object(id=panic_channel_id), msg2)
         await client.send_file(discord.Object(id=panic_channel_id), img_path + "breathing.gif")
@@ -134,7 +164,7 @@ async def on_message(message):
 async def on_member_join(member):
     server = member.server
     fmt = 'Welcome {0.mention} to {1.name}! Don\'t hesitate to use any of the ' \
-                  '#support channels if you require immediate support or contact ' + staff_role_id + ' if you have any questions. Please read our ' + welcome_channel_id + \
+                  '#support channels if you require immediate support or contact ' + HAS_role_id + ' if you have any questions. Please read our ' + welcome_channel_id + \
                   ' channel so you can be familiar with our server rules. Type !help for any bot commands.'
     await client.send_message(server, fmt.format(member, server))
 
