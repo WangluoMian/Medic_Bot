@@ -3,15 +3,18 @@ import logging
 import random
 import asyncio
 import requests
+import sys, os
 from bs4 import BeautifulSoup
 
 ################################################################################
+script_dir = sys.path[0]
+img_path = os.path.join(script_dir, 'media\\')
 logging.basicConfig(level=logging.INFO)
 client = discord.Client()
 songTime = 0
 songDonePlaying = True
 server_id = '219209303708401664'
-channel_id = '272465465702350848'
+panic_channel_id = '272465465702350848'
 voice_id = '344147579593949194'
 staff_role_id = "<@&339089528885084170>"
 welcome_channel_id = "<#338456569769623552>"
@@ -46,45 +49,45 @@ async def on_message(message):
 	#A list of commands for people to use
     if message.content.startswith('!meme'):
         media_to_use = random.choice(memlist)
-        await client.send_file(message.channel, media_to_use)
+        await client.send_file(message.channel, img_path + media_to_use)
 
     elif message.content.startswith('!hug'):
         media_to_use = random.choice(huglist)
-        await client.send_file(message.channel, media_to_use)
+        await client.send_file(message.channel, img_path + media_to_use)
 
     elif message.content.startswith('!breathe'):
-        await client.send_file(message.channel, "breathing.gif")
+        await client.send_file(message.channel, img_path + "breathing.gif")
 
     elif message.content.startswith('!happybday'):
         media_to_use = random.choice(bdaylist)
-        await client.send_file(message.channel, media_to_use)
+        await client.send_file(message.channel, img_path + media_to_use)
 
 	#Music player for links with youtube
-    elif message.content.startswith('!play '):
-        global songTime
-        global songDonePlaying
-        if songTime == 0:
-            msg = message.content.replace("!play ", "")
-            voice = client.voice_client_in(discord.Server(id=server_id))
-            print(voice)
-            player = await voice.create_ytdl_player(msg)
-            player.start()
-            client.loop.create_task(my_background_task())
-            songTime = player.duration
-            songDonePlaying = False
-        else:
-            timeLeft = str(convert_seconds_to_minutes(songTime))
-            await client.send_message(message.channel, "Sorry the song currently playing has " + timeLeft +" minutes left, please try again when it's ended. Thank you.")
+    #elif message.content.startswith('!play '):
+        #global songTime
+        #global songDonePlaying
+        #if songTime == 0:
+            #msg = message.content.replace("!play ", "")
+            #voice = client.voice_client_in(discord.Server(id=server_id))
+            #print(voice)
+            #player = await voice.create_ytdl_player(msg)
+            #player.start()
+            #client.loop.create_task(my_background_task())
+            #songTime = player.duration
+            #songDonePlaying = False
+        #else:
+            #timeLeft = str(convert_seconds_to_minutes(songTime))
+            #await client.send_message(message.channel, "Sorry the song currently playing has " + timeLeft +" minutes left, please try again when it's ended. Thank you.")
 
 	#Panic mode
     elif message.content.startswith('!panic'):
-        msg1 = 'Hello {0.author.mention}, I see you\'re\' having a panic attack. Please move to our support channel ' \
+        msg1 = 'Hello {0.author.mention}, I see you\'re having a panic attack. Please move to our support channel ' \
                                    'where we can better assist you.'.format(message)
         msg2= 'Hello @everyone, is anyone available to assist {0.author.mention}. Here is a gif to help you breath in the ' \
                                                                            'mean time.'.format(message)
         await client.send_message(message.channel, msg1)
-        await client.send_message(discord.Object(id=channel_id), msg2)
-        await client.send_file(discord.Object(id=channel_id), "breathing.gif")
+        await client.send_message(discord.Object(id=panic_channel_id), msg2)
+        await client.send_file(discord.Object(id=panic_channel_id), img_path + "breathing.gif")
 
 	#Help section explaining how to use the commands
     elif message.content.startswith('!help'):
@@ -96,7 +99,8 @@ async def on_message(message):
                      ' voice channel' \
                 '\n''\n' '!panic - is for people who are having an anxiety attack'\
                 '\n''\n' '!happybday - sends a random birthday gif' \
-                '\n''\n' '!urbanD - e.i(!urbanD anxiety) will return the top definition for that word'
+                '\n''\n' '!urbanD - e.i(!urbanD anxiety) will return the top definition for that word' \
+                '\n''\n' '!privacy - sends an alert to the Health Anxiety Support if you\'d like to have a private conversation'
                 '\n''\n' '~This is a bot made by @Philzeey, feel free to send me any messages for complaints or suggestions.', colour=0x00E707)
         em.set_author(name=message.author, icon_url=client.user.avatar_url)
         await client.send_message(message.channel, embed=em)
@@ -111,13 +115,19 @@ async def on_message(message):
             await client.send_message(message.channel, "*beep... boop...*Sorry you don't contain the "
                                                        "right privileges to execute that command.")
 
-    # UrbanDictionary finder
+    #UrbanDictionary word finder
     elif message.content.startswith('!urbanD '):
         msg = message.content.replace('!urbanD ', '')
         r = requests.get("http://www.urbandictionary.com/define.php?term={}".format(msg))
         soup = BeautifulSoup(r.content, "html.parser")
         definition = soup.find("div", attrs={"class": "meaning"}).text
         await client.send_message(message.channel, "From Urban Dictionary, " + "**" + msg + "**" + " is defined as:"'\n''\n' + "*" + definition + "*")
+
+    #Alert HAS for a private conversation
+    elif message.content.startswith('!privacy'):
+        msg = 'Hello {0.author.mention}, you\'ve contacted me to help you get into touch with a ' + staff_role_id + ' member, privately.' \
+            ' I\'ve alerted them about this. They will get into contact with you when they are available. Thank you.'.format(message)
+        await client.send_message(message.channel, msg)
 
 	#Message to welcome member when they join the server
 @client.event
