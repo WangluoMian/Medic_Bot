@@ -113,7 +113,7 @@ async def on_message(message):
     elif message.content.startswith('!panic'):
         msg1 = 'Hello {0.author.mention}, I see you\'re having a panic attack. Please move to our support channel ' \
                'where we can better assist you.'.format(message)
-        msg2 = 'Hello @everyone, is anyone available to assist {0.author.mention}. Here is a gif to help you breath in the ' \
+        msg2 = 'Hello @here, is anyone available to assist {0.author.mention}. Here is a gif to help you breath in the ' \
                'mean time.'.format(message)
         await client.send_message(message.channel, msg1)
         await client.send_message(discord.Object(id=panic_channel_id), msg2)
@@ -164,7 +164,7 @@ async def on_message(message):
 async def on_member_join(member):
     server = member.server
     fmt = 'Welcome {0.mention} to {1.name}! Don\'t hesitate to use any of the ' \
-                  '#support channels if you require immediate support or contact ' + HAS_role_id + ' if you have any questions. Please read our ' + welcome_channel_id + \
+                  '#support channels if you require immediate support or contact ' + staff_role_id + ' if you have any questions. Please read our ' + welcome_channel_id + \
                   ' channel so you can be familiar with our server rules. Type !help for any bot commands.'
     await client.send_message(server, fmt.format(member, server))
 
