@@ -7,8 +7,8 @@ import sys, os
 from bs4 import BeautifulSoup
 ################################################################################
 script_dir = sys.path[0]
-img_path = os.path.join(script_dir, 'media\\')
-song_path = os.path.join(script_dir, 'music\\')
+img_path = os.path.join(script_dir, 'media')
+song_path = os.path.join(script_dir, 'music')
 logging.basicConfig(level=logging.INFO)
 client = discord.Client()
 server_id = '219209303708401664'
@@ -21,7 +21,6 @@ welcome_channel_id = "<#338456569769623552>"
 #global variables
 songTime = 0
 ################################################################################
-
 async def my_background_task():
     await client.wait_until_ready()
     while not client.is_closed:
@@ -39,15 +38,9 @@ def convert_seconds_to_minutes(seconds):
 @client.event
 async def on_message(message):
     #list of media
-    memlist = ["mem1.jpg","mem2.jpg","mem3.jpg","mem4.jpg","mem5.jpg","mem6.jpg","mem7.jpg","mem8.jpg","mem9.jpg","mem10.jpg","mem11.jpg","mem12.jpg","mem13.jpg","mem14.jpg"]
-    huglist = ["hug1.gif","hug2.gif","hug3.gif","hug4.gif"]
-    bdaylist = ["bday1.gif","bday2.gif","bday3.gif"]
-
-    #list of music
-    rainlist = ["rain1.mp3"]
-    medlist = ["med1.mp3"]
-    waveslist = ["waves1.mp3"]
-    streamlist = ["stream1.mp3"]
+    memlist = ["/mem1.jpg","/mem2.jpg","/mem3.jpg","/mem4.jpg","/mem5.jpg","/mem6.jpg","/mem7.jpg","/mem8.jpg","/mem9.jpg","/mem10.jpg","/mem11.jpg","/mem12.jpg","/mem13.jpg","/mem14.jpg"]
+    huglist = ["/hug1.gif","/hug2.gif","/hug3.gif","/hug4.gif"]
+    bdaylist = ["/bday1.gif","/bday2.gif","/bday3.gif"]
 
     #We do not want the bot to reply to itself
     if message.author == client.user:
@@ -63,7 +56,7 @@ async def on_message(message):
         await client.send_file(message.channel, img_path + media_to_use)
 
     elif message.content.startswith('!breathe'):
-        await client.send_file(message.channel, img_path + "breathing.gif")
+        await client.send_file(message.channel, img_path + "/breathing.gif")
 
     elif message.content.startswith('!happybday'):
         media_to_use = random.choice(bdaylist)
@@ -83,32 +76,6 @@ async def on_message(message):
             #timeLeft = str(convert_seconds_to_minutes(songTime))
             #await client.send_message(message.channel, "Sorry the song currently playing has " + timeLeft +" minutes left, please try again when it's ended. Thank you.")
 
-    #Music player for custom music files
-    elif message.content.startswith('!play '):
-        global songTime
-        if songTime == 0:
-            msg = message.content.replace("!play ", "")
-            voice = client.voice_client_in(discord.Server(id=server_id))
-            if msg == 'rain':
-                song_to_use = random.choice(rainlist)
-            elif msg == 'med':
-                song_to_use = random.choice(medlist)
-            elif msg == 'stream':
-                song_to_use = random.choice(streamlist)
-            elif msg == 'waves':
-                song_to_use = random.choice(waveslist)
-            else:
-                await client.send_message(message.channel, 'Sorry, you\'ve chosen an invalid choice. Valid choices include: stream, waves, med, rain.')
-                return
-            player = voice.create_ffmpeg_player(song_path + song_to_use)
-            player.start()
-            songTime = 605
-            client.loop.create_task(my_background_task())
-        else:
-            timeLeft = str(convert_seconds_to_minutes(songTime))
-            await client.send_message(message.channel, "Sorry the song currently playing has " + timeLeft +" minutes left, please try again when it's ended.")
-            return
-
 	#Panic mode
     elif message.content.startswith('!panic'):
         msg1 = 'Hello {0.author.mention}, I see you\'re having a panic attack. Please move to our support channel ' \
@@ -125,19 +92,16 @@ async def on_message(message):
                 '\n''\n' '!meme - sends a random meme'\
                 '\n''\n' '!hug - sends a random hug gif' \
                 '\n''\n' '!breathe - sends a breathing exercise gif' \
-                '\n''\n' '!play - e.i(!play {insert YouTube link here}) will play that youtube link in the music'
-                     ' voice channel' \
                 '\n''\n' '!panic - is for people who are having an anxiety attack'\
                 '\n''\n' '!happybday - sends a random birthday gif' \
                 '\n''\n' '!urbanD - e.i(!urbanD anxiety) will return the top definition for that word' \
-                '\n''\n' '!privacy - sends an alert to the Health Anxiety Support if you\'d like to have a private conversation'
                 '\n''\n' '~This is a bot made by @Philzeey, feel free to send me any messages for complaints or suggestions.', colour=0x00E707)
         em.set_author(name=message.author, icon_url=client.user.avatar_url)
         await client.send_message(message.channel, embed=em)
 
 	#Admin commands
     elif message.content.startswith('!purge'):
-        if str(message.author.top_role) == "Admin":
+        if str(message.author.top_role) == "Admin" or str(message.author.top_role) == "Moderators":
             deleted = await client.purge_from(message.channel, limit=100)
             await client.send_message(message.channel, 'Deleted {} message(s)'.format(len(deleted)))
 
@@ -152,12 +116,6 @@ async def on_message(message):
         soup = BeautifulSoup(r.content, "html.parser")
         definition = soup.find("div", attrs={"class": "meaning"}).text
         await client.send_message(message.channel, "From Urban Dictionary, " + "**" + msg + "**" + " is defined as:"'\n''\n' + "*" + definition + "*")
-
-    #Alert HAS for a private conversation
-    elif message.content.startswith('!privacy'):
-        msg = 'Hello {0.author.mention}, you\'ve contacted me to help you get into touch with a ' + staff_role_id + ' member, privately.' \
-            ' I\'ve alerted them about this. They will get into contact with you when they are available. Thank you.'.format(message)
-        await client.send_message(message.channel, msg)
 
 	#Message to welcome member when they join the server
 @client.event
@@ -178,7 +136,7 @@ async def on_ready():
     print(client.user.id)
     print('------')
     await client.change_presence(game=discord.Game(name='Helping People'))
-    await client.join_voice_channel(discord.Object(id=voice_id))
+    #await client.join_voice_channel(discord.Object(id=voice_id))
 ################################################################################
 
 client.run('')
