@@ -1,142 +1,180 @@
 import discord
-import logging
 import random
 import asyncio
 import requests
 import sys, os
+import config
+import praw
 from bs4 import BeautifulSoup
-################################################################################
+import youtube_dl
+
+# setting media dir
 script_dir = sys.path[0]
 img_path = os.path.join(script_dir, 'media')
-song_path = os.path.join(script_dir, 'music')
-logging.basicConfig(level=logging.INFO)
-client = discord.Client()
-server_id = '219209303708401664'
-panic_channel_id = '272465465702350848'
-voice_id = '344147579593949194'
-staff_role_id = "<@&339089528885084170>"
-HAS_role_id = "<@&338694785848311808>"
-welcome_channel_id = "<#338456569769623552>"
-################################################################################
-#global variables
-songTime = 0
-################################################################################
-async def my_background_task():
-    await client.wait_until_ready()
-    while not client.is_closed:
-        global songTime
-        songTime -= 1
-        await asyncio.sleep(1)
-        if songTime == 0:
+
+# suppress noise about console usage from errors
+youtube_dl.utils.bug_reports_message = lambda: ''
+
+ytdl_format_options = {
+    'format': 'bestaudio/best',
+    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'restrictfilenames': True,
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
+    'no_warnings': True,
+    'default_search': 'auto',
+    'source_address': '0.0.0.0' # ipv6 addresses cause issues sometimes
+}
+
+ffmpeg_options = {
+    'before_options': '-nostdin',
+    'options': '-vn'
+}
+
+ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
+
+class YTDLSource(discord.PCMVolumeTransformer):
+    def __init__(self, source, *, data, volume=0.5):
+        super().__init__(source, volume)
+
+        self.data = data
+
+        self.title = data.get('title')
+        self.url = data.get('url')
+
+    @classmethod
+    async def from_url(cls, url, *, loop=None):
+        loop = loop or asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, ytdl.extract_info, url)
+
+        if 'entries' in data:
+            # take first item from a playlist
+            data = data['entries'][0]
+
+        filename = ytdl.prepare_filename(data)
+        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+
+class MyClient(discord.Client):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # create the background task and run it in the background
+        self.bg_task = self.loop.create_task(self.my_background_task())
+
+    async def on_ready(self):
+        print('Logged in as')
+        print(self.user.name)
+        print(self.user.id)
+        print('------')
+        await client.change_presence(game=discord.Game(name='Helping People'))
+        channel = client.get_channel(config.voice_channel_id)
+        global voice
+        voice = await discord.VoiceChannel.connect(channel)
+
+    async def on_message(self, message):
+        # we do not want the bot to reply to itself
+        if message.author.id == self.user.id:
             return
 
-def convert_seconds_to_minutes(seconds):
-    m, s = divmod(seconds, 60)
-    h, m = divmod(m, 60)
-    return "%d:%02d:%02d" % (h, m, s)
+        # panic attack command
+        if message.content.startswith('!panic'):
+            if message.channel.id == config.panic_channel_id:
+                msg = 'Hello @here, is anyone available to assist {0.author.mention}.'.format(message)
+                await message.channel.send(msg)
+            else:
+                msg1 = 'Hello {0.author.mention}, I see you\'re having a panic attack. Please move to our support channel ' \
+                       'where we can better assist you.'.format(message)
+                msg2 ='Hello @here, is anyone available to assist {0.author.mention}.'.format(message)
+                await message.channel.send(msg1)
+                await client.get_channel(config.panic_channel_id).send(msg2)
 
-@client.event
-async def on_message(message):
-    #list of media
-    memlist = ["/mem1.jpg","/mem2.jpg","/mem3.jpg","/mem4.jpg","/mem5.jpg","/mem6.jpg","/mem7.jpg","/mem8.jpg","/mem9.jpg","/mem10.jpg","/mem11.jpg","/mem12.jpg","/mem13.jpg","/mem14.jpg"]
-    huglist = ["/hug1.gif","/hug2.gif","/hug3.gif","/hug4.gif"]
-    bdaylist = ["/bday1.gif","/bday2.gif","/bday3.gif"]
+        elif message.content.startswith('!meme'):
+            media_to_use = random.choice(config.memlist)
+            await message.channel.send(file=discord.File(fp=img_path + media_to_use))
 
-    #We do not want the bot to reply to itself
-    if message.author == client.user:
-        return
+        elif message.content.startswith('!hug'):
+            media_to_use = random.choice(config.huglist)
+            await message.channel.send(file=discord.File(fp=img_path + media_to_use))
 
-	#A list of commands for people to use
-    if message.content.startswith('!meme'):
-        media_to_use = random.choice(memlist)
-        await client.send_file(message.channel, img_path + media_to_use)
+        elif message.content.startswith('!breathe'):
+            await message.channel.send(file=discord.File(fp=img_path + "/breathing.gif"))
 
-    elif message.content.startswith('!hug'):
-        media_to_use = random.choice(huglist)
-        await client.send_file(message.channel, img_path + media_to_use)
+        elif message.content.startswith('!happybday'):
+            media_to_use = random.choice(config.bdaylist)
+            await message.channel.send(file=discord.File(fp=img_path + media_to_use))
 
-    elif message.content.startswith('!breathe'):
-        await client.send_file(message.channel, img_path + "/breathing.gif")
+        # music player for links with youtube
+        elif message.content.startswith('!play '):
+            global voice
+            url = message.content.replace("!play ", "")
+            player = await YTDLSource.from_url(url)
+            if voice.is_playing():
+                voice.stop()
+            voice.play(player)
 
-    elif message.content.startswith('!happybday'):
-        media_to_use = random.choice(bdaylist)
-        await client.send_file(message.channel, img_path + media_to_use)
+        # help command
+        elif message.content.startswith('!help'):
+            em = discord.Embed(title='*beep...* *boop...*Hello, you\'ve\' asked for help!',
+                               description='Here are a list of some command you can do: ' \
+                                           '\n''\n' '!meme - sends a random meme' \
+                                           '\n''\n' '!hug - sends a random hug gif' \
+                                           '\n''\n' '!breathe - sends a breathing exercise gif' \
+                                           '\n''\n' '!panic - is for people who are having an anxiety attack' \
+                                           '\n''\n' '!happybday - sends a random birthday gif' \
+                                           '\n''\n' '!play - play any youtube link you would like. e.g.(!play {insert link here})' \
+                                           '\n''\n' '!urbanD - e.i(!urbanD anxiety) will return the top definition for that word' \
+                                           '\n''\n' '~This is a bot made by @Philzeey, feel free to send me any messages for complaints or suggestions.',
+                               colour=0x00E707)
+            em.set_author(name=message.author, icon_url=client.user.avatar_url)
+            await message.channel.send(embed=em)
 
-	#Music player for links with youtube
-    #elif message.content.startswith('!play '):
-        #global songTime
-        #if songTime == 0:
-            #msg = message.content.replace("!play ", "")
-            #voice = client.voice_client_in(discord.Server(id=server_id))
-            #player = await voice.create_ytdl_player(msg)
-            #player.start()
-            #client.loop.create_task(my_background_task())
-            #songTime = player.duration
-        #else:
-            #timeLeft = str(convert_seconds_to_minutes(songTime))
-            #await client.send_message(message.channel, "Sorry the song currently playing has " + timeLeft +" minutes left, please try again when it's ended. Thank you.")
+        # admin commands
+        elif message.content.startswith('!purge'):
+            amount = message.content.replace("!purge ", "")
 
-	#Panic mode
-    elif message.content.startswith('!panic'):
-        msg1 = 'Hello {0.author.mention}, I see you\'re having a panic attack. Please move to our support channel ' \
-               'where we can better assist you.'.format(message)
-        msg2 = 'Hello @here, is anyone available to assist {0.author.mention}. Here is a gif to help you breath in the ' \
-               'mean time.'.format(message)
-        await client.send_message(message.channel, msg1)
-        await client.send_message(discord.Object(id=panic_channel_id), msg2)
-        await client.send_file(discord.Object(id=panic_channel_id), img_path + "breathing.gif")
+            if (str(message.author.top_role) == "Admin" or str(message.author.top_role) == "Moderators") and int(amount) <= 100:
+                await message.channel.purge(limit=int(amount))
 
-	#Help section explaining how to use the commands
-    elif message.content.startswith('!help'):
-        em = discord.Embed(title='*beep...* *boop...*Hello, you\'ve\' asked for help!', description='Here are a list of some command you can do: ' \
-                '\n''\n' '!meme - sends a random meme'\
-                '\n''\n' '!hug - sends a random hug gif' \
-                '\n''\n' '!breathe - sends a breathing exercise gif' \
-                '\n''\n' '!panic - is for people who are having an anxiety attack'\
-                '\n''\n' '!happybday - sends a random birthday gif' \
-                '\n''\n' '!urbanD - e.i(!urbanD anxiety) will return the top definition for that word' \
-                '\n''\n' '~This is a bot made by @Philzeey, feel free to send me any messages for complaints or suggestions.', colour=0x00E707)
-        em.set_author(name=message.author, icon_url=client.user.avatar_url)
-        await client.send_message(message.channel, embed=em)
+            else:
+                await message.channel.send("*beep... boop...*Sorry you don't contain the right privileges to execute that command, or wanted to delete to many. Please limit to <=100.")
 
-	#Admin commands
-    elif message.content.startswith('!purge'):
-        if str(message.author.top_role) == "Admin" or str(message.author.top_role) == "Moderators":
-            deleted = await client.purge_from(message.channel, limit=100)
-            await client.send_message(message.channel, 'Deleted {} message(s)'.format(len(deleted)))
+        # urbanDictionary word finder
+        elif message.content.startswith('!urbanD '):
+            msg = message.content.replace('!urbanD ', '')
+            r = requests.get("http://www.urbandictionary.com/define.php?term={}".format(msg))
+            soup = BeautifulSoup(r.content, "html.parser")
+            definition = soup.find("div", attrs={"class": "meaning"}).text
+            await message.channel.send("From Urban Dictionary, " + "**" + msg + "**" + " is defined as:"'\n''\n' + "*" + definition + "*")
 
-        else:
-            await client.send_message(message.channel, "*beep... boop...*Sorry you don't contain the "
-                                                       "right privileges to execute that command.")
+    # on member join message
+    async def on_member_join(self, member):
+        msg = 'Welcome {0.mention} to {1.name}! Don\'t hesitate to use any of the ' \
+              '#support channels if you require immediate support or contact ' + config.staff_role_id + ' if you have any questions. Please read our ' + config.welcome_channel_id + \
+              ' channel so you can be familiar with our server rules. Type !help for any bot commands.'
+        guild = member.guild
+        await guild.default_channel.send(msg.format(member, guild))
 
-    #UrbanDictionary word finder
-    elif message.content.startswith('!urbanD '):
-        msg = message.content.replace('!urbanD ', '')
-        r = requests.get("http://www.urbandictionary.com/define.php?term={}".format(msg))
-        soup = BeautifulSoup(r.content, "html.parser")
-        definition = soup.find("div", attrs={"class": "meaning"}).text
-        await client.send_message(message.channel, "From Urban Dictionary, " + "**" + msg + "**" + " is defined as:"'\n''\n' + "*" + definition + "*")
+    # reddit bot feed task
+    async def my_background_task(self):
+        await self.wait_until_ready()
+        reddit = praw.Reddit(client_id=config.client_id,
+                             client_secret=config.client_secret,
+                             user_agent=config.user_agent)
 
-	#Message to welcome member when they join the server
-@client.event
-async def on_member_join(member):
-    server = member.server
-    fmt = 'Welcome {0.mention} to {1.name}! Don\'t hesitate to use any of the ' \
-                  '#support channels if you require immediate support or contact ' + staff_role_id + ' if you have any questions. Please read our ' + welcome_channel_id + \
-                  ' channel so you can be familiar with our server rules. Type !help for any bot commands.'
-    await client.send_message(server, fmt.format(member, server))
+        id = ""
+        while not self.is_closed():
+            subreddit = reddit.subreddit("healthanxiety")
+            submissions = subreddit.new(limit=1)
+            for submission in submissions:
+                if submission.id == id:
+                    break
+                else:
+                    await client.get_channel(config.redditFeed_channel_id).send(submission.title +'\n'+submission.url)
+                    id = submission.id
+            await asyncio.sleep(60) #recheck every 60 seconds
 
-################################################################################
-#logging in
-@client.event
-async def on_ready():
-    print('------')
-    print('Logged in as')
-    print(client.user.name)
-    print(client.user.id)
-    print('------')
-    await client.change_presence(game=discord.Game(name='Helping People'))
-    #await client.join_voice_channel(discord.Object(id=voice_id))
-################################################################################
-
-client.run('')
+client = MyClient()
+client.run(config.token)
